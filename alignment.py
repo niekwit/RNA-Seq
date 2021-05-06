@@ -5,6 +5,7 @@ import os
 import sys
 import glob
 import subprocess
+import urllib.request
 
 def trim(threads, work_dir):
     threads=threads
@@ -19,11 +20,19 @@ def trim(threads, work_dir):
     elif os.path.isdir(work_dir + "/trim") == True or len(os.listdir(work_dir + "/trim")) > 0:
         print("Skipping adapter trimming (already performed)")
 
-def salmon(salmon_index,threads,work_dir,gtf):
+def salmon(salmon_index,threads,work_dir,gtf,fasta,script_dir):
     salmon_index=salmon_index
     threads=threads
     work_dir=work_dir
     gtf=gtf
+    fasta=fasta
+    script_dir=script_dir
+
+    if salmon_index == "": #Salmon index not found, make on the fly
+        url="https://github.com/COMBINE-lab/SalmonTools/blob/master/scripts/generateDecoyTranscriptome.sh"
+        urllib.request.urlretrieve(url,script_dir+"/generateDecoyTranscriptome.sh")
+        gDT_script=script_dir,"/generateDecoyTranscriptome.sh"
+        subprocess.run(["chmod +x",gDT_script])
 
     if os.path.isdir(work_dir + "/salmon") == False or len(os.listdir(work_dir + "/salmon")) == 0:
         print("Mapping reads with Salmon:")
@@ -33,10 +42,13 @@ def salmon(salmon_index,threads,work_dir,gtf):
             os.mkdir(work_dir+"/salmon")
             read2=read1.replace("R1_001_val_1.fq.gz", "R2_001_val_2.fq.gz")
             out_file=read1.replace("_R1_001_val_1.fq.gz","")
-            salmon_output_file=work_dir+"/salmon/"+out_file
+            salmon_output_file=work_dir+"/salmon/"+out_file+"quant"
             salmon_command=["salmon","quant","--index",salmon_index,"-l","A",
             "-g", gtf,"-p",threads,"-1", read1,"-2",read2,"--validateMappings",
             "--gcBias","-o", salmon_output_file]
+            subprocess.run(salmon_command, shell=True)
+            #Run R script for DESeq2
+            deseq2_command=""
 
 def hisat2():
     print("Mapping reads with HISAT2")

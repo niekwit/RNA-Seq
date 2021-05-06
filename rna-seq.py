@@ -20,7 +20,12 @@ def main():
     sys.path.append(script_dir)#adds script directory to runtime (for importing modules)
 
     ###loads available RNA-Seq settings
-    with open(script_dir+"/settings.yaml") as file: settings=yaml.full_load(file)
+    if os.path.exists(script_dir+"settings.yaml") == True:
+        with open(script_dir+"/settings.yaml") as file: settings=yaml.full_load(file)
+    else:
+        print("ERROR: settings.yaml not found in analysis folder. Please provide this file for further analysis.")
+        sys.exit()
+
     genome_list=["gencode-v35"]#######
 
     ###command line argument parser
@@ -29,7 +34,7 @@ def main():
                     required=False,
                     default=1,
                     metavar="<int>",
-                    help="Number of CPU threads to use (default is 1). Use max to apply all available CPU threads")
+                    help="Number of CPU threads to use (default is 1). Use max to apply all available CPU threads. For Salmon 8-12 threads are optimal")
     ap.add_argument("-r", "--genome",
                     required=False,
                     choices=genome_list,
@@ -74,7 +79,8 @@ def main():
         trim(threads,work_dir)
         salmon_index=settings.get("salmon_index", {}).get('gencode-V35')
         gtf=settings.get("salmon_gtf", {}).get('gencode-V35')
-        salmon(salmon_index,threads,work_dir,gtf)
+        fasta=settings.get("FASTA", {}).get('hg19')
+        salmon(salmon_index,threads,work_dir,gtf,fasta,script_dir)
     elif align.lower() == "hisat2":
         from alignment import trim,hisat2
         trim(threads,work_dir)
