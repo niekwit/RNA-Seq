@@ -1,0 +1,9 @@
+salmon_index:
+  gencode-v35: "/home/niek/Documents/references/fasta/Human/gencode.v35.transcripts/salmon_index"
+salmon_gtf:
+  gencode-v35: "/home/niek/Documents/references/gtf/Homo_sapiens.GRCh38.95.gtf"
+HISAT2_index:
+  hg19: "/home/niek/Documents/references/hisat2-index/GRCh37-hg19ucsc/hg19-index"
+  hg38: ""
+  mm9: ""
+  mm10: ""
