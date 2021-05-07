@@ -12,15 +12,13 @@ import time
 import glob
 
 def main():
-    start = timeit.default_timer()#initiate timing of run
-
     script_dir=os.path.abspath(os.path.dirname(__file__))
     work_dir=os.getcwd()
 
     sys.path.append(script_dir)#adds script directory to runtime (for importing modules)
 
     ###loads available RNA-Seq settings
-    if os.path.exists(script_dir+"settings.yaml") == True:
+    if os.path.exists(script_dir+"/settings.yaml") == True:
         with open(script_dir+"/settings.yaml") as file: settings=yaml.full_load(file)
     else:
         print("ERROR: settings.yaml not found in analysis folder. Please provide this file for further analysis.")
@@ -35,7 +33,7 @@ def main():
                     default=1,
                     metavar="<int>",
                     help="Number of CPU threads to use (default is 1). Use max to apply all available CPU threads. For Salmon 8-12 threads are optimal")
-    ap.add_argument("-r", "--genome",
+    ap.add_argument("-r", "--reference",
                     required=False,
                     choices=genome_list,
                     help="Reference genome")
@@ -59,14 +57,14 @@ def main():
     ###Run FastQC/MultiQC
 
     def fastqc():
-        fastqc_command="fastqc --threads "+threads+" --quiet -o fastqc/ raw-data/*.fastq.gz"
+        fastqc_command="fastqc --threads "+str(threads)+" --quiet -o fastqc/ raw-data/*.fastq.gz"
         multiqc_command=["multiqc","-o","fastqc/","fastqc/"]
         print("Running FastQC on raw data")
         subprocess.run(fastqc_command, shell=True)
         print("Running MultiQC")
         subprocess.run(multiqc_command)
 
-    if os.path.isdir(work_dir + "/fastqc") == False:
+    if not os.path.isdir(work_dir + "/fastqc"):
         os.mkdir(work_dir+"/fastqc")
         fastqc()
     elif len(os.listdir(work_dir + "/fastqc")) == 0:
@@ -77,14 +75,20 @@ def main():
     if align.lower() == "salmon":
         from alignment import trim,salmon
         trim(threads,work_dir)
-        salmon_index=settings.get("salmon_index", {}).get('gencode-V35')
-        gtf=settings.get("salmon_gtf", {}).get('gencode-V35')
-        fasta=settings.get("FASTA", {}).get('hg19')
-        salmon(salmon_index,threads,work_dir,gtf,fasta,script_dir)
+        salmon_index=settings.get("salmon_index", {}).get('gencode-v35')
+        gtf=settings.get("salmon_gtf", {}).get('gencode-v35')
+        fasta=settings.get("FASTA", {}).get('gencode-v35')
+        salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir)
     elif align.lower() == "hisat2":
         from alignment import trim,hisat2
         trim(threads,work_dir)
         hisat2()
+
+
+if __name__ == "__main__":
+    start = timeit.default_timer()#initiate timing of run
+
+    main()
 
     ###print total run time
     stop = timeit.default_timer()
@@ -92,7 +96,3 @@ def main():
     ty_res = time.gmtime(total_time)
     res = time.strftime("%H:%M:%S",ty_res)
     print('Total run time: ', res)
-
-
-if __name__ == "__main__":
-   main()
