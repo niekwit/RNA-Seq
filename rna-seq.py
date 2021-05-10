@@ -55,30 +55,21 @@ def main():
         threads=max_threads
 
     ###Run FastQC/MultiQC
-
-    def fastqc():
-        fastqc_command="fastqc --threads "+str(threads)+" --quiet -o fastqc/ raw-data/*.fastq.gz"
-        multiqc_command=["multiqc","-o","fastqc/","fastqc/"]
-        print("Running FastQC on raw data")
-        subprocess.run(fastqc_command, shell=True)
-        print("Running MultiQC")
-        subprocess.run(multiqc_command)
-
-    if not os.path.isdir(work_dir + "/fastqc"):
-        os.mkdir(work_dir+"/fastqc")
-        fastqc()
-    elif len(os.listdir(work_dir + "/fastqc")) == 0:
-        fastqc()
+    from utils import fastqc
+    if not os.path.isdir(work_dir + "/fastqc") or len(os.listdir(work_dir + "/fastqc")) == 0:
+        os.makedirs(work_dir+"/fastqc",exist_ok=True)
+        fastqc(work_dir,threads)
 
     ###trim and align
     align=args["align"]
     if align.lower() == "salmon":
-        from alignment import trim,salmon
+        from utils import trim,salmon,diff_expr
         trim(threads,work_dir)
         salmon_index=settings.get("salmon_index", {}).get('gencode-v35')
         gtf=settings.get("salmon_gtf", {}).get('gencode-v35')
         fasta=settings.get("FASTA", {}).get('gencode-v35')
         salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir)
+        diff_expr(work_dir,gtf)
     elif align.lower() == "hisat2":
         from alignment import trim,hisat2
         trim(threads,work_dir)
@@ -87,9 +78,7 @@ def main():
 
 if __name__ == "__main__":
     start = timeit.default_timer()#initiate timing of run
-
     main()
-
     ###print total run time
     stop = timeit.default_timer()
     total_time = stop - start
