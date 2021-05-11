@@ -19,7 +19,8 @@ def main():
 
     ###loads available RNA-Seq settings
     if os.path.exists(script_dir+"/settings.yaml") == True:
-        with open(script_dir+"/settings.yaml") as file: settings=yaml.full_load(file)
+        with open(script_dir+"/settings.yaml") as file:
+            settings=yaml.full_load(file)
     else:
         print("ERROR: settings.yaml not found in analysis folder. Please provide this file for further analysis.")
         sys.exit()
@@ -56,20 +57,18 @@ def main():
 
     ###Run FastQC/MultiQC
     from utils import fastqc
-    if not os.path.isdir(work_dir + "/fastqc") or len(os.listdir(work_dir + "/fastqc")) == 0:
-        os.makedirs(work_dir+"/fastqc",exist_ok=True)
-        fastqc(work_dir,threads)
+    fastqc(work_dir,threads)
 
     ###trim and align
     align=args["align"]
     if align.lower() == "salmon":
         from utils import trim,salmon,diff_expr
         trim(threads,work_dir)
-        salmon_index=settings.get("salmon_index", {}).get('gencode-v35')
-        gtf=settings.get("salmon_gtf", {}).get('gencode-v35')
-        fasta=settings.get("FASTA", {}).get('gencode-v35')
-        salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir)
-        diff_expr(work_dir,gtf)
+        salmon_index=settings["salmon_index"]["gencode-v35"]
+        gtf=settings["salmon_gtf"]["gencode-v35"]
+        fasta=settings["FASTA"]["gencode-v35"]
+        salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
+        diff_expr(work_dir,gtf,script_dir)
     elif align.lower() == "hisat2":
         from alignment import trim,hisat2
         trim(threads,work_dir)
@@ -79,7 +78,8 @@ def main():
 if __name__ == "__main__":
     start = timeit.default_timer()#initiate timing of run
     main()
-    ###print total run time
+
+    #print total run time
     stop = timeit.default_timer()
     total_time = stop - start
     ty_res = time.gmtime(total_time)
