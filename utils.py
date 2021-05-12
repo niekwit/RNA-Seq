@@ -6,6 +6,13 @@ import os
 import subprocess
 import yaml
 
+def file_exists(file):
+    if os.path.exists(file):
+        print("Skipping "+file+" (already exists)")
+        return(True)
+    else:
+        return(False)
+
 def fastqc(work_dir,threads):
     threads=threads
     work_dir=work_dir
@@ -112,7 +119,7 @@ def diff_expr(work_dir,gtf,script_dir):
         print(*deseq2_command, sep=" ",file=file)
     print("Running differential expression analysis with DESeq2")
     os.makedirs(work_dir+"/DESeq2",exist_ok=True)
-    subprocess.run(deseq2_command)
+    #subprocess.run(deseq2_command)
 
 def go():
     print("Running GO analysis with DAVID")
