@@ -10,6 +10,7 @@ args <- commandArgs(trailingOnly=TRUE)
 work.dir <- args[1]
 gtf <- args[2]
 script.dir <- args[3]
+species <- args[4]
 
 #Create sample files for all comparisons
 samples.master <- read.table(file.path(work.dir,"samples.txt"), header=TRUE)
@@ -52,6 +53,12 @@ if(file.exists(txdb.filename) == FALSE){
 k <- keys(txdb,keytype="TXNAME")
 tx2gene <- select(txdb,k,"GENEID","TXNAME")
 
+#select ensembl data base for ensemble ID to gene symbol conversion
+if(species == "mouse"){
+  library="EnsDb.Mmusculus.v79"
+} else if(species == "human"){
+  library="EnsDb.Hsapiens.v79"}
+library(library)
 
 #Run DESeq2 for each sample df in df.list
 for (i in 1:length(df.list)){
@@ -126,9 +133,8 @@ for (i in 1:length(df.list)){
               by="GENEID")
   
   #Convert Ensembl gene IDs to gene symbols
-  suppressMessages(library(EnsDb.Hsapiens.v79))
   genes <- res@rownames
-  gene.symbols <- ensembldb::select(EnsDb.Hsapiens.v79, 
+  gene.symbols <- ensembldb::select(library, 
                                     keys= genes, 
                                     keytype = "GENEID", 
                                     columns = c("SYMBOL","GENEID"))
