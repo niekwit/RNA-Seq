@@ -1,10 +1,8 @@
 suppressMessages(library(tximport))
 suppressMessages(library(readr))
-suppressMessages(library(DESeq2))
+ suppressMessages(library(DESeq2))
 suppressMessages(library(GenomicFeatures))
-suppressMessages(library(biomaRt))
 suppressMessages(library(ggplot2))
-
 
 args <- commandArgs(trailingOnly=TRUE)
 work.dir <- args[1]
@@ -15,7 +13,7 @@ species <- args[4]
 #Create sample files for all comparisons
 samples.master <- read.table(file.path(work.dir,"samples.txt"), header=TRUE)
 number.exp <- ncol(samples.master)-2
-exp.names <- colnames(samples.raw[,3:ncol(samples.raw)])
+exp.names <- colnames(samples.master[,3:ncol(samples.master)])
 
 df.list <- list()#list for storing comparison dfs
 for (i in 1:length(exp.names)) { #create data frames for each experiment from master sample sheet
@@ -53,13 +51,6 @@ if(file.exists(txdb.filename) == FALSE){
 k <- keys(txdb,keytype="TXNAME")
 tx2gene <- select(txdb,k,"GENEID","TXNAME")
 
-#select ensembl data base for ensemble ID to gene symbol conversion
-if(species == "mouse"){
-  library="EnsDb.Mmusculus.v79"
-} else if(species == "human"){
-  library="EnsDb.Hsapiens.v79"}
-library(library)
-
 #Run DESeq2 for each sample df in df.list
 for (i in 1:length(df.list)){
   #create file list for DESeq2 input
@@ -94,7 +85,8 @@ for (i in 1:length(df.list)){
   res <- res[order(res$padj),]
   
   #create directory for output
-  dir.out <- paste0(work.dir,"/",resultsNames(dds)[2])
+  dir.exp <- gsub("condition_","",resultsNames(dds)[2])
+  dir.out <- paste0(work.dir,"/DESeq2/",dir.exp)
   if(dir.exists(dir.out) == FALSE){
     dir.create(dir.out)
   }
@@ -133,11 +125,22 @@ for (i in 1:length(df.list)){
               by="GENEID")
   
   #Convert Ensembl gene IDs to gene symbols
+  #select ensembl data base for ensemble ID to gene symbol conversion
+  #detachAllPackages()
   genes <- res@rownames
-  gene.symbols <- ensembldb::select(library, 
-                                    keys= genes, 
-                                    keytype = "GENEID", 
-                                    columns = c("SYMBOL","GENEID"))
+  if(species == "mouse"){
+    suppressMessages(library(EnsDb.Mmusculus.v79))
+    gene.symbols <- ensembldb::select(EnsDb.Mmusculus.v79, 
+                                      keys= genes, 
+                                      keytype = "GENEID", 
+                                      columns = c("SYMBOL","GENEID"))
+  } else if(species == "human"){
+    suppressMessages(library(EnsDb.Hsapiens.v79))
+    gene.symbols <- ensembldb::select(EnsDb.Hsapiens.v79, 
+                                      keys= genes, 
+                                      keytype = "GENEID", 
+                                      columns = c("SYMBOL","GENEID"))
+    }
   
   suppressMessages(library(dplyr))
   df <- merge(x=df,
@@ -150,6 +153,7 @@ for (i in 1:length(df.list)){
   write.csv(df, 
             file=paste0(dir.out,"/DESeq-output.csv"),
             row.names=FALSE)
+  
   
 }
 
