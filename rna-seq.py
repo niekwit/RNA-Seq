@@ -38,6 +38,10 @@ def main():
                     required=False,
                     choices=genome_list,
                     help="Reference genome")
+    ap.add_argument("-s", "--species",
+                    required=True,
+                    choices=["mouse","human"],
+                    help="Set species.")
     ap.add_argument("-a", "--align",
                     required=False,
                     choices=["salmon","hisat2"],
@@ -59,6 +63,9 @@ def main():
     from utils import fastqc
     fastqc(work_dir,threads)
 
+    ###Set species variable
+    species=args["species"]
+
     ###trim and align
     align=args["align"]
     if align.lower() == "salmon":
@@ -68,15 +75,19 @@ def main():
         gtf=settings["salmon_gtf"]["gencode-v35"]
         fasta=settings["FASTA"]["gencode-v35"]
         salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
-        diff_expr(work_dir,gtf,script_dir)
+        diff_expr(work_dir,gtf,script_dir,species)
     elif align.lower() == "hisat2":
         from alignment import trim,hisat2
         trim(threads,work_dir)
-        hisat2()
+        #hisat2()
 
 
 if __name__ == "__main__":
-    start = timeit.default_timer()#initiate timing of run
+    #start run timer
+    start = timeit.default_timer()
+
+    from utils import install_packages
+    install_packages()
     main()
 
     #print total run time
