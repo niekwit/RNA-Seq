@@ -1,9 +1,26 @@
 suppressMessages(library(tximport))
 suppressMessages(library(readr))
- suppressMessages(library(DESeq2))
+suppressMessages(library(DESeq2))
 suppressMessages(library(GenomicFeatures))
 suppressMessages(library(ggplot2))
 
+#check if required packages are installed, if not install them
+packages <- rownames(installed.packages())
+biocmanager.packages <- c("tximport","DESeq2","GenomicFeatures","EnsDb.Mmusculus.v79","EnsDb.Hsapiens.v79")
+cran.packages <- c("BiocManager","ggplot2","readr","dplyr")
+
+cran.packages2install <- cran.packages[! cran.packages %in% packages]
+biocmanager.packages2install <- biocmanager.packages[! biocmanager.packages %in% packages]
+
+if(length(biocmanager.packages2install) > 0){
+  for (x in biocmanager.packages2install){BiocManager::install(x)} 
+}
+
+if(length(cran.packages2install) > 0){
+  for (x in cran.packages2install){install.packages(x)} 
+}
+
+#get parsed arguments
 args <- commandArgs(trailingOnly=TRUE)
 work.dir <- args[1]
 gtf <- args[2]
@@ -150,10 +167,14 @@ for (i in 1:length(df.list)){
   #order data for padj
   df <- df[order(df$padj), ]
   
+  #reorder columns
+  df <- df %>%
+    relocate(SYMBOL, .after=GENEID) 
+  
+  #write df to csv file
   write.csv(df, 
             file=paste0(dir.out,"/DESeq-output.csv"),
             row.names=FALSE)
-  
   
 }
 
