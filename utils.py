@@ -17,10 +17,11 @@ def install_packages(): #check for required python packages; installs if absent
         print("Installing missing required Python3 packages")
         subprocess.check_call([python, '-m', 'pip3', 'install', *missing], stdout=subprocess.DEVNULL)
 
-def file_exists(file):
+def file_exists(file): #check if file exists/is not size zero
     if os.path.exists(file):
-        print("Skipping "+file+" (already exists/analysed)")
-        return(True)
+            if os.path.getsize(file) > 0:
+                print("Skipping "+file+" (already exists/analysed)")
+                return(True)
     else:
         return(False)
 
