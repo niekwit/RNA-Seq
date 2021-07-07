@@ -9,13 +9,11 @@ import multiprocessing
 import yaml
 import timeit
 import time
-import glob
+#import glob
 
-def main():
-    script_dir=os.path.abspath(os.path.dirname(__file__))
+def main(script_dir):
+    
     work_dir=os.getcwd()
-
-    sys.path.append(script_dir)#adds script directory to runtime (for importing modules)
 
     ###loads available RNA-Seq settings
     if os.path.exists(script_dir+"/settings.yaml") == True:
@@ -47,10 +45,15 @@ def main():
                     choices=["salmon","hisat2"],
                     default="salmon",
                     help="Choose aligner. Default is Salmon.")
-    ap.add_argument("-g", "--go",
+    ap.add_argument("--go",
                     required=False,
                     action='store_true',
-                    help="GO analysis with DAVID")
+                    help="Gene set enrichment analysis with Enrichr")
+    ap.add_argument("--skip-fastqc",
+                    required=False,
+                    action='store_true',
+                    default=False,
+                    help="Skip FastQC/MultiQC")
     args = vars(ap.parse_args())
 
     ####set thread count for processing
@@ -60,8 +63,11 @@ def main():
         threads=max_threads
 
     ###Run FastQC/MultiQC
-    from utils import fastqc
-    fastqc(work_dir,threads)
+    skip_fastqc=args["skip_fastqc"]
+    if not skip_fastqc:
+        utils.fastqc(work_dir,threads,file_extension,exe_dict)
+    else:
+        print("Skipping FastQC/MultiQC analysis")
 
     ###Set species variable
     species=args["species"]
@@ -69,26 +75,28 @@ def main():
     ###trim and align
     align=args["align"]
     if align.lower() == "salmon":
-        from utils import trim,salmon,diff_expr
-        trim(threads,work_dir)
+        utils.trim(threads,work_dir)
         salmon_index=settings["salmon_index"]["gencode-v35"]
         gtf=settings["salmon_gtf"]["gencode-v35"]
         fasta=settings["FASTA"]["gencode-v35"]
-        salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
-        diff_expr(work_dir,gtf,script_dir,species)
+        utils.salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
+        utils.diff_expr(work_dir,gtf,script_dir,species)
     elif align.lower() == "hisat2":
         from alignment import trim,hisat2
-        trim(threads,work_dir)
+        utils.trim(threads,work_dir)
         #hisat2()
 
 
 if __name__ == "__main__":
     #start run timer
     start = timeit.default_timer()
+    
+    script_dir=os.path.abspath(os.path.dirname(__file__))
+    sys.path.append(script_dir)#adds script directory to runtime (for importing modules)
+    import utils as utils
 
-    from utils import install_packages
-    install_packages()
-    main()
+    #utils.install_packages()
+    main(script_dir)
 
     #print total run time
     stop = timeit.default_timer()

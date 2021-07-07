@@ -7,9 +7,12 @@ import subprocess
 import yaml
 import sys
 import pkg_resources
+import pandas as pd
+import numpy as np
+import seaborn as sns
 
 def install_packages(): #check for required python packages; installs if absent
-    required = {"pyyaml"}
+    required = {"pyyaml,cutadapt,multiqc"}
     installed = {pkg.key for pkg in pkg_resources.working_set}
     missing = required - installed
     if missing:
@@ -17,11 +20,15 @@ def install_packages(): #check for required python packages; installs if absent
         print("Installing missing required Python3 packages")
         subprocess.check_call([python, '-m', 'pip3', 'install', *missing], stdout=subprocess.DEVNULL)
 
+def check_software():
+    pass
+    #check for salmon, trim_galore, DESeq2, HISAT2
+
 def file_exists(file): #check if file exists/is not size zero
     if os.path.exists(file):
-            if os.path.getsize(file) > 0:
-                print("Skipping "+file+" (already exists/analysed)")
-                return(True)
+        if os.path.getsize(file) > 0:
+            print("Skipping "+file+" (already exists/analysed)")
+            return(True)
     else:
         return(False)
 
@@ -108,15 +115,36 @@ def salmon(salmon_index,threads,work_dir,gtf,fasta,script_dir,settings):
             print("Mapping sample " + read1.replace("_R1_001_val_1.fq.gz", ""))
             read2=read1.replace("R1_001_val_1.fq.gz", "R2_001_val_2.fq.gz")
             out_file=os.path.basename(read1.replace("_R1_001_val_1.fq.gz",""))
-            salmon_output_file=os.join.path(work_dir,"salmon",out_file)+"-quant"
+            salmon_output_file=os.path.join(work_dir,"salmon",out_file)+"-quant"
             salmon_index=settings["salmon_index"]["gencode-v35"] #reload index
             salmon_command=["salmon","quant","--index",salmon_index,"-l","A",
             "-g", gtf,"-p",threads,"-1", read1,"-2",read2,"--validateMappings",
             "--gcBias","-o", salmon_output_file]
-            with open(os.join.path(work_dir,"commands.log"), "a") as file:
+            with open(os.path.join(work_dir,"commands.log"), "a") as file:
                 file.write("Salmon quant: ")
                 print(*salmon_command, sep=" ",file=file)
             subprocess.run(salmon_command) #Run Salmon quant
+            
+def plotMappingRate(work_dir):
+    file_list=glob.glob(os.path.join(work_dir,"salmon","*","logs","salmon_quant.log"))
+    
+    mapping_rate=[]
+    samples=[]
+
+    for file in file_list:
+        sample=os.path.dirname(file)
+        sample=sample.replace(work_dir+"salmon/","")
+        sample=sample.replace("/log","")
+        sample=sample.replace("-quants","")
+        samples.append(sample)
+        with open(file,"r") as file:
+            for line in file:
+                if "[info] Mapping rate" in line:
+                    rate=line.rsplit(" ",1)[1]
+                    rate=rate.replace("%","")
+                    mapping_rate.append(rate)
+    
+    
 
 def hisat2():
     print("Mapping reads with HISAT2 (UNDER CONSTRUCTION)")
@@ -132,4 +160,4 @@ def diff_expr(work_dir,gtf,script_dir,species):
     subprocess.run(deseq2_command)
 
 def go():
-    print("Running GO analysis with DAVID")
+    print("Running GO analysis with Enrichr")
