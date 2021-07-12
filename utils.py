@@ -10,6 +10,7 @@ import pkg_resources
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import matplotlib.pyplot as plt
 
 def install_packages(): #check for required python packages; installs if absent
     required = {"pyyaml,cutadapt,multiqc"}
@@ -31,11 +32,19 @@ def file_exists(file): #check if file exists/is not size zero
             return(True)
     else:
         return(False)
+    
+def getExtension(work_dir):
+    file_list=glob.glob(os.path.join(work_dir,"raw-data","*.gz"))
+    test_file=file_list[0]
+    extension_index=test_file.index(".",0)
+    file_extension=test_file[extension_index:]
+    return file_extension
 
 def write2log(work_dir,command,name):
     with open(os.path.join(work_dir,"commands.log"), "a") as file:
         file.write(name)
         print(*command, sep=" ",file=file)
+        
 
 def fastqc(work_dir,threads):
     threads=threads
@@ -125,26 +134,51 @@ def salmon(salmon_index,threads,work_dir,gtf,fasta,script_dir,settings):
                 print(*salmon_command, sep=" ",file=file)
             subprocess.run(salmon_command) #Run Salmon quant
             
+def plot(df,y_label,save_file):
+    sns.set_style("white")
+    sns.set_style("ticks")
+    sns.barplot(x=list(df.keys())[0],
+                    y=list(df.keys())[1],
+                    data=df)
+    plt.ylabel(y_label)
+    plt.xticks(rotation = 'vertical')
+    plt.xlabel("")
+    plt.tight_layout()
+    sns.despine()
+    plt.savefig(save_file)
+    plt.clf()
+
 def plotMappingRate(work_dir):
     file_list=glob.glob(os.path.join(work_dir,"salmon","*","logs","salmon_quant.log"))
-    
+    save_file=os.path.join(work_dir,"salmon","mapping_rates.pdf")
     mapping_rate=[]
     samples=[]
+    df=pd.DataFrame(columns=["sample","Mapping rate (%)"],index=np.arange(len(file_list)))
 
-    for file in file_list:
-        sample=os.path.dirname(file)
-        sample=sample.replace(work_dir+"salmon/","")
-        sample=sample.replace("/log","")
-        sample=sample.replace("-quants","")
-        samples.append(sample)
-        with open(file,"r") as file:
-            for line in file:
-                if "[info] Mapping rate" in line:
-                    rate=line.rsplit(" ",1)[1]
-                    rate=rate.replace("%","")
-                    mapping_rate.append(rate)
+    if not file_exists(save_file): 
+        for file in file_list:
+                sample=os.path.dirname(file)
+                sample=sample.replace(os.path.join(work_dir,"salmon"),"")
+                sample=sample.replace("/log","")
+                sample=sample.replace("-quants","")
+                sample=sample.replace("/","")
+                samples.append(sample)
+                with open(file,"r") as file:
+                    for line in file:
+                        if "[info] Mapping rate" in line:
+                            rate=line.rsplit(" ",1)[1]
+                            rate=rate.replace("%","")
+                            mapping_rate.append(rate)
+                
+    df["sample"]=samples
+    df["Mapping rate (%)"]=mapping_rate
+    df["Mapping rate (%)"]=pd.to_numeric(df["Mapping rate (%)"])
+    df=df.sort_values(by=["sample"],
+                      ascending=True,
+                      inplace=False).reset_index(drop=True)
     
-    
+
+    plot(df,"Mapping rate (%)",save_file)
 
 def hisat2():
     print("Mapping reads with HISAT2 (UNDER CONSTRUCTION)")

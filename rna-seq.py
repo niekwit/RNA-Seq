@@ -4,7 +4,6 @@
 import os
 import sys
 import argparse
-import subprocess
 import multiprocessing
 import yaml
 import timeit
@@ -80,9 +79,9 @@ def main(script_dir):
         gtf=settings["salmon_gtf"]["gencode-v35"]
         fasta=settings["FASTA"]["gencode-v35"]
         utils.salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
+        utils.plotMappingRate(work_dir)
         utils.diff_expr(work_dir,gtf,script_dir,species)
     elif align.lower() == "hisat2":
-        from alignment import trim,hisat2
         utils.trim(threads,work_dir)
         #hisat2()
 
