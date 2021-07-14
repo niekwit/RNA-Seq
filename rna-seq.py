@@ -44,10 +44,21 @@ def main(script_dir):
                     choices=["salmon","hisat2"],
                     default="salmon",
                     help="Choose aligner. Default is Salmon.")
+    ap.add_argument("-p","--pvalue",
+                    required=False,
+                    metavar="<P value>",
+                    default=0.001,help="Set P value cut off")
     ap.add_argument("--go",
                     required=False,
                     action='store_true',
                     help="Gene set enrichment analysis with Enrichr")
+    ap.add_argument("--gene-sets",
+                    required=False,
+                    metavar="<GO gene set>",
+                    default=["GO_Molecular_Function_2021",
+                             "GO_Cellular_Component_2021",
+                             "GO_Biological_Process_2021"],
+                    help="Gene sets used for GO analysis (default is GO_Molecular_Function_2021, GO_Cellular_Component_2021, and GO_Biological_Process_2021). Gene sets can be found on https://maayanlab.cloud/Enrichr/#stats")
     ap.add_argument("--skip-fastqc",
                     required=False,
                     action='store_true',
@@ -81,9 +92,16 @@ def main(script_dir):
         utils.salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
         utils.plotMappingRate(work_dir)
         utils.diff_expr(work_dir,gtf,script_dir,species)
+        utils.plotVolcano(work_dir)
     elif align.lower() == "hisat2":
         utils.trim(threads,work_dir)
         #hisat2()
+    
+    go=args["go"]
+    pvalue=args["pvalue"]
+    if go == True:
+        gene_sets=args["gene_sets"]
+        utils.go(work_dir,pvalue,gene_sets)
 
 
 if __name__ == "__main__":

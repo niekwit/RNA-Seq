@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import gseapy as gp
+ 
 
 def install_packages(): #check for required python packages; installs if absent
     required = {"pyyaml,cutadapt,multiqc"}
@@ -134,19 +136,22 @@ def salmon(salmon_index,threads,work_dir,gtf,fasta,script_dir,settings):
                 print(*salmon_command, sep=" ",file=file)
             subprocess.run(salmon_command) #Run Salmon quant
             
-def plot(df,y_label,save_file):
+def plotBar(df,y_label,save_file):
     sns.set_style("white")
     sns.set_style("ticks")
     sns.barplot(x=list(df.keys())[0],
                     y=list(df.keys())[1],
-                    data=df)
+                    data=df,
+                    color="cornflowerblue",
+                    edgecolor="black",
+                    linewidth=1)
     plt.ylabel(y_label)
     plt.xticks(rotation = 'vertical')
     plt.xlabel("")
     plt.tight_layout()
     sns.despine()
     plt.savefig(save_file)
-    plt.clf()
+    plt.close()
 
 def plotMappingRate(work_dir):
     file_list=glob.glob(os.path.join(work_dir,"salmon","*","logs","salmon_quant.log"))
@@ -169,22 +174,70 @@ def plotMappingRate(work_dir):
                             rate=line.rsplit(" ",1)[1]
                             rate=rate.replace("%","")
                             mapping_rate.append(rate)
-                
-    df["sample"]=samples
-    df["Mapping rate (%)"]=mapping_rate
-    df["Mapping rate (%)"]=pd.to_numeric(df["Mapping rate (%)"])
-    df=df.sort_values(by=["sample"],
-                      ascending=True,
-                      inplace=False).reset_index(drop=True)
-    
+        
+        df["sample"]=samples
+        df["Mapping rate (%)"]=mapping_rate
+        df["Mapping rate (%)"]=pd.to_numeric(df["Mapping rate (%)"])
+        df=df.sort_values(by=["sample"],
+                          ascending=True,
+                          inplace=False).reset_index(drop=True)
+        
+        plotBar(df,"Mapping rate (%)",save_file)
 
-    plot(df,"Mapping rate (%)",save_file)
+def plotVolcano(work_dir):
+    file_list=glob.glob(os.path.join(work_dir,
+                                     "DESeq2",
+                                     "*",
+                                     "DESeq-output.csv"))
+    
+    for file in file_list:
+        base_name=os.path.basename(os.path.dirname(file))
+        
+        out_dir=os.path.dirname(file)
+        out_file=os.path.join(out_dir,base_name+"-volcano.pdf")
+        if not file_exists(out_file):
+            print("Generating volcano plot for: "+base_name)
+            df=pd.read_csv(file)
+            df["log.p.value"]=-np.log(df["padj"])
+            df["label"] = ""
+            
+            #mark genes are upregulated or downregulated for plotting
+            conditions=[(df["log2FoldChange"] > 0.5) & (df["log.p.value"] > 3),
+                        (df["label"] != "up") & (df["log2FoldChange"] < -0.5) & (df["log.p.value"] > 3),
+                        (df["label"] != "up") & (df["label"] != "down")]
+            choices=["Upregulated","Downregulated","None"]
+            df["label"]=np.select(conditions, 
+                                  choices, 
+                                  default=np.nan)
+            
+            #plot
+            sns.set_style("white")
+            sns.set_style("ticks")
+            sns.scatterplot(data=df, 
+                            x="log2FoldChange", 
+                            y="log.p.value",
+                            alpha=0.5,
+                            linewidth=0.25,
+                            edgecolor="black",
+                            hue="label",
+                            palette=["red", "blue", "black"],
+                            legend= False)
+            plt.xlabel("log2(FC)")
+            plt.ylabel("-log(adjusted P value)")
+            sns.despine()
+            plt.savefig(out_file)
+            plt.close()
 
 def hisat2():
     print("Mapping reads with HISAT2 (UNDER CONSTRUCTION)")
     sys.exit()
 
 def diff_expr(work_dir,gtf,script_dir,species):
+    samples_input=os.path.join(work_dir,"samples.csv")
+    if not os.path.exists(samples_input):
+        sys.exit("ERROR: "+samples_input+" not found")
+    
+    
     deseq2_command=["Rscript",script_dir+"/deseq2.R",work_dir,gtf,script_dir,species]
     with open(os.path.join(work_dir,"commands.log"), "a") as file:
         file.write("DESeq2: ")
@@ -193,5 +246,19 @@ def diff_expr(work_dir,gtf,script_dir,species):
     os.makedirs(work_dir+"/DESeq2",exist_ok=True)
     subprocess.run(deseq2_command)
 
-def go():
-    print("Running GO analysis with Enrichr")
+def go(work_dir,pvalue,gene_sets):
+    file_list=glob.glob(os.path.join(work_dir,
+                                     "DESeq2",
+                                     "*",
+                                     "DESeq-output.csv"))
+    
+    if len(file_list) == 0:
+            print("ERROR: DESeq2 output files found")
+            return(None)
+    
+    for file in file_list:
+       df=pd.read_csv(file)
+       df["log.p.value"]=-np.log(df["padj"])
+       
+       
+            
