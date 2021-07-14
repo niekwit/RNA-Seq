@@ -1,13 +1,10 @@
-suppressMessages(library(tximport))
-suppressMessages(library(readr))
-suppressMessages(library(DESeq2))
-suppressMessages(library(GenomicFeatures))
-suppressMessages(library(ggplot2))
-
 #check if required packages are installed, if not install them
 packages <- rownames(installed.packages())
-biocmanager.packages <- c("tximport","DESeq2","GenomicFeatures","EnsDb.Mmusculus.v79","EnsDb.Hsapiens.v79")
-cran.packages <- c("BiocManager","ggplot2","readr","dplyr")
+biocmanager.packages <- c("tximport","DESeq2",
+                          "GenomicFeatures","EnsDb.Mmusculus.v79",
+                          "EnsDb.Hsapiens.v79","apeglm")
+cran.packages <- c("BiocManager","ggplot2",
+                   "readr","dplyr")
 
 cran.packages2install <- cran.packages[! cran.packages %in% packages]
 biocmanager.packages2install <- biocmanager.packages[! biocmanager.packages %in% packages]
@@ -20,6 +17,12 @@ if(length(cran.packages2install) > 0){
   for (x in cran.packages2install){install.packages(x)} 
 }
 
+suppressMessages(library(tximport))
+suppressMessages(library(readr))
+suppressMessages(library(DESeq2))
+suppressMessages(library(GenomicFeatures))
+suppressMessages(library(ggplot2))
+
 #get parsed arguments
 args <- commandArgs(trailingOnly=TRUE)
 work.dir <- args[1]
@@ -28,7 +31,7 @@ script.dir <- args[3]
 species <- args[4]
 
 #Create sample files for all comparisons
-samples.master <- read.table(file.path(work.dir,"samples.txt"), header=TRUE)
+samples.master <- read.csv(file.path(work.dir,"samples.csv"), header=TRUE)
 number.exp <- ncol(samples.master)-2
 exp.names <- colnames(samples.master[,3:ncol(samples.master)])
 
@@ -143,7 +146,7 @@ for (i in 1:length(df.list)){
   
   #Convert Ensembl gene IDs to gene symbols
   #select ensembl data base for ensemble ID to gene symbol conversion
-  #detachAllPackages()
+  
   genes <- res@rownames
   if(species == "mouse"){
     suppressMessages(library(EnsDb.Mmusculus.v79))
