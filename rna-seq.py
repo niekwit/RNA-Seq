@@ -47,7 +47,8 @@ def main(script_dir):
     ap.add_argument("-p","--pvalue",
                     required=False,
                     metavar="<P value>",
-                    default=0.001,help="Set P value cut off")
+                    default=0.001,
+                    help="Set P value cut off (default is 0.001")
     ap.add_argument("--go",
                     required=False,
                     action='store_true',
@@ -73,16 +74,19 @@ def main(script_dir):
         threads=max_threads
 
     ###Run FastQC/MultiQC
+    
+    file_extension=utils.getExtension(work_dir)
     skip_fastqc=args["skip_fastqc"]
     if not skip_fastqc:
-        utils.fastqc(work_dir,threads,file_extension,exe_dict)
+        utils.fastqc(work_dir,threads,file_extension)
     else:
         print("Skipping FastQC/MultiQC analysis")
 
     ###Set species variable
     species=args["species"]
-
+    
     ###trim and align
+    pvalue=args["pvalue"]
     align=args["align"]
     if align.lower() == "salmon":
         utils.trim(threads,work_dir)
@@ -91,17 +95,17 @@ def main(script_dir):
         fasta=settings["FASTA"]["gencode-v35"]
         utils.salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
         utils.plotMappingRate(work_dir)
-        utils.diff_expr(work_dir,gtf,script_dir,species)
+        utils.diff_expr(work_dir,gtf,script_dir,species,pvalue)
         utils.plotVolcano(work_dir)
     elif align.lower() == "hisat2":
         utils.trim(threads,work_dir)
         #hisat2()
     
     go=args["go"]
-    pvalue=args["pvalue"]
+    
     if go == True:
         gene_sets=args["gene_sets"]
-        utils.go(work_dir,pvalue,gene_sets)
+        utils.geneSetEnrichment(work_dir,pvalue,gene_sets)
 
 
 if __name__ == "__main__":
