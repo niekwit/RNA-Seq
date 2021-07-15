@@ -12,6 +12,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import gseapy as gp
+import math
  
 
 def install_packages(): #check for required python packages; installs if absent
@@ -40,7 +41,7 @@ def getExtension(work_dir):
     test_file=file_list[0]
     extension_index=test_file.index(".",0)
     file_extension=test_file[extension_index:]
-    return file_extension
+    return(file_extension)
 
 def write2log(work_dir,command,name):
     with open(os.path.join(work_dir,"commands.log"), "a") as file:
@@ -48,12 +49,11 @@ def write2log(work_dir,command,name):
         print(*command, sep=" ",file=file)
         
 
-def fastqc(work_dir,threads):
-    threads=threads
-    work_dir=work_dir
+def fastqc(work_dir,threads,file_extension):
+    
     if not os.path.isdir(os.path.join(work_dir,"fastqc")) or len(os.listdir(os.path.join(work_dir,"fastqc"))) == 0:
-        os.makedirs(work_dir+"/fastqc",exist_ok=True)
-        fastqc_command="fastqc --threads "+str(threads)+" --quiet -o fastqc/ raw-data/*.fastq.gz"
+        os.makedirs(os.path.join(work_dir,"fastqc"),exist_ok=True)
+        fastqc_command="fastqc --threads "+str(threads)+" --quiet -o fastqc/ raw-data/*"+file_extension
         multiqc_command=["multiqc","-o","fastqc/","fastqc/"]
         #log commands
         with open(os.path.join(work_dir,"commands.log"),"w") as file:
@@ -232,33 +232,68 @@ def hisat2():
     print("Mapping reads with HISAT2 (UNDER CONSTRUCTION)")
     sys.exit()
 
-def diff_expr(work_dir,gtf,script_dir,species):
+def diff_expr(work_dir,gtf,script_dir,species,pvalue):
     samples_input=os.path.join(work_dir,"samples.csv")
     if not os.path.exists(samples_input):
         sys.exit("ERROR: "+samples_input+" not found")
     
     
-    deseq2_command=["Rscript",script_dir+"/deseq2.R",work_dir,gtf,script_dir,species]
+    deseq2_command=["Rscript",os.path.join(script_dir,"deseq2.R"),work_dir,gtf,script_dir,species,str(pvalue)]
     with open(os.path.join(work_dir,"commands.log"), "a") as file:
         file.write("DESeq2: ")
         print(*deseq2_command, sep=" ",file=file)
     print("Running differential expression analysis with DESeq2")
-    os.makedirs(work_dir+"/DESeq2",exist_ok=True)
+    os.makedirs(os.path.join(work_dir,"DESeq2"),
+                exist_ok=True)
     subprocess.run(deseq2_command)
 
-def go(work_dir,pvalue,gene_sets):
+def geneSetEnrichment(work_dir,pvalue,gene_sets):
     file_list=glob.glob(os.path.join(work_dir,
                                      "DESeq2",
                                      "*",
                                      "DESeq-output.csv"))
     
     if len(file_list) == 0:
-            print("ERROR: DESeq2 output files found")
+            print("ERROR: no DESeq2 output files found")
             return(None)
+    
+    
+    def doEnrichr(gene_list,gene_sets,out_dir,output_name):
+        out_dir=os.path.join(out_dir,"Enrichr",output_name)
+        
+        enrichr_results=gp.enrichr(gene_list=gene_list,
+                                   gene_sets=gene_sets,
+                                   outdir=out_dir)
+    
+    logPvalue=-math.log10(pvalue)
     
     for file in file_list:
        df=pd.read_csv(file)
        df["log.p.value"]=-np.log(df["padj"])
+       out_dir=os.path.dirname(file)
+              
+       df_up=df[(df["log2FoldChange"] > 0.5) & (df["log.p.value"] > logPvalue)]
+       upregulated_genes=list(df_up["SYMBOL"])
        
+       df_down=df[(df["log2FoldChange"] < -0.5) & (df["log.p.value"] > logPvalue)]
+       downregulated_genes=list(df_down["SYMBOL"])
        
-            
+       input_list=[upregulated_genes,downregulated_genes]
+       output_names=["upregulated_genes","downregulated_genes"]
+       
+       for x,y in zip(input_list,output_names):
+           doEnrichr(x,gene_sets,out_dir,y)
+           
+    def GSEA(df):#not working properly yet
+     rnk=df[["SYMBOL","log2FoldChange"]]
+     rnk=rnk.dropna()
+     rnk=rnk.drop_duplicates(subset="SYMBOL")
+     pre_res=gp.prerank(rnk=rnk,
+                        gene_sets="GO_Biological_Process_2021",
+                        processes=4,
+                        permutation_num=100,
+                        outdir=os.path.join(out_dir,"Enrichr","upregulated_genes"),
+                        format="pdf",
+                        seed=6)
+     terms=pre_res.res2d.index
+     
