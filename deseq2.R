@@ -29,6 +29,7 @@ work.dir <- args[1]
 gtf <- args[2]
 script.dir <- args[3]
 species <- args[4]
+pvalue <- as.numeric(args[5])
 
 #Create sample files for all comparisons
 samples.master <- read.csv(file.path(work.dir,"samples.csv"), header=TRUE)
@@ -40,7 +41,7 @@ for (i in 1:length(exp.names)) { #create data frames for each experiment from ma
   exp <- exp.names[i]
   df.temp <- samples.master
   temp.list <- exp.names
- 
+  
   #select which columns to remove
   to.remove <- exp != temp.list
   drop.columns <- temp.list[to.remove]
@@ -53,7 +54,7 @@ for (i in 1:length(exp.names)) { #create data frames for each experiment from ma
   
   #add df to df.list
   df.list[[i]] <- df.temp
-  }
+}
 
 names(df.list) <- exp.names #name dfs in list
 
@@ -117,7 +118,14 @@ for (i in 1:length(df.list)){
                       type="apeglm") #results for plotting (shrinkage of size effect)
   
   pdf(file=paste0(dir.out,"/MA-plot.pdf"))
-  plotMA(resLFC, ylim=c(-2,2))
+  plotMA(resLFC, 
+         alpha=pvalue,
+         ylim=c(-2,2))
+  dev.off()
+  
+  #Generate gene dispersion plot 
+  pdf(file=file.path(dir.out,"dispersion-plot.pdf"))
+  plotDispEsts(dds)
   dev.off()
   
   #Generate PCA plot
@@ -160,7 +168,7 @@ for (i in 1:length(df.list)){
                                       keys= genes, 
                                       keytype = "GENEID", 
                                       columns = c("SYMBOL","GENEID"))
-    }
+  }
   
   suppressMessages(library(dplyr))
   df <- merge(x=df,
@@ -180,4 +188,3 @@ for (i in 1:length(df.list)){
             row.names=FALSE)
   
 }
-
