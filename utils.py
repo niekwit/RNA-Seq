@@ -12,6 +12,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import gseapy as gp
+from gseapy.plot import gseaplot
 import math
  
 
@@ -265,11 +266,44 @@ def geneSetEnrichment(work_dir,pvalue,gene_sets):
                                    gene_sets=gene_sets,
                                    outdir=out_dir)
     
+   
+    def GSEA(df,gene_set,out_dir):#not working properly yet
+        rnk=df.dropna()
+        rnk=rnk[["SYMBOL","log2FoldChange"]]
+        rnk=rnk.dropna()
+        rnk=rnk.drop_duplicates(subset="SYMBOL")
+        pre_res=gp.prerank(rnk=rnk,
+                            gene_sets=gene_set,
+                            processes=4,
+                            permutation_num=100,
+                            format="pdf",
+                            seed=6,
+                            no_plot=True)
+        terms=pre_res.res2d.index
+        df_out=pre_res.res2d
+        df_out.reset_index(inplace=True)
+        df_out.to_csv(os.path.join(out_dir,"GSEA",'GSEA.csv'), 
+                      index=False)
+        
+        for i in range(10): #plot GSEA plots for top 10 terms
+            GSEA_dir=os.path.join(out_dir,"GSEA",gene_set) 
+            os.makedirs(GSEA_dir,
+                        exist_ok=True)
+            try:
+                gseaplot(rank_metric=pre_res.ranking,
+                         term=terms[i],
+                         pheno_pos="Upregulated genes",
+                         pheno_neg="Downregulated genes",
+                         ofname=os.path.join(GSEA_dir,terms[i]+".pdf"),
+                         **pre_res.results[terms[i]])
+            except FileNotFoundError:
+                continue
+    
     logPvalue=-math.log10(pvalue)
     
     for file in file_list:
        df=pd.read_csv(file)
-       df["log.p.value"]=-np.log(df["padj"])
+       df["log.p.value"]=-np.log10(df["padj"])
        out_dir=os.path.dirname(file)
               
        df_up=df[(df["log2FoldChange"] > 0.5) & (df["log.p.value"] > logPvalue)]
@@ -281,19 +315,11 @@ def geneSetEnrichment(work_dir,pvalue,gene_sets):
        input_list=[upregulated_genes,downregulated_genes]
        output_names=["upregulated_genes","downregulated_genes"]
        
+       #run Enrichr
        for x,y in zip(input_list,output_names):
            doEnrichr(x,gene_sets,out_dir,y)
            
-    def GSEA(df):#not working properly yet
-     rnk=df[["SYMBOL","log2FoldChange"]]
-     rnk=rnk.dropna()
-     rnk=rnk.drop_duplicates(subset="SYMBOL")
-     pre_res=gp.prerank(rnk=rnk,
-                        gene_sets="GO_Biological_Process_2021",
-                        processes=4,
-                        permutation_num=100,
-                        outdir=os.path.join(out_dir,"Enrichr","upregulated_genes"),
-                        format="pdf",
-                        seed=6)
-     terms=pre_res.res2d.index
-     
+       #Run GSEA
+       for i in gene_sets:
+          GSEA(df,i,out_dir)    
+    
