@@ -117,11 +117,39 @@ for (i in 1:length(df.list)){
                       coef=resultsNames(dds)[2], 
                       type="apeglm") #results for plotting (shrinkage of size effect)
   
-  pdf(file=paste0(dir.out,"/MA-plot.pdf"))
-  plotMA(resLFC, 
-         alpha=pvalue,
-         ylim=c(-2,2))
-  dev.off()
+  
+  df_ma <-  plotMA(resLFC, 
+                   alpha=pvalue,
+                   colSig="red",
+                   colLine="black",
+                   ylim=c(-5,5),
+                   returnData=TRUE)
+  df_ma$above.limit <- abs(df_ma$lfc) > 5
+  
+  df_ma$lfc <- ifelse(df_ma$lfc > 5,5,df_ma$lfc)
+  df_ma$lfc <- ifelse(df_ma$lfc < -5,-5,df_ma$lfc)
+  
+  p <- ggplot(df_ma, aes(x=`mean`,
+                    y=`lfc`, 
+                    color=`isDE`,
+                    shape=`above.limit`)) +
+    geom_point() +
+    scale_x_continuous(trans='log10') +
+    ylim(-5,5) + 
+    scale_color_manual(values=c("black", "blue")) + 
+    theme_classic(base_size = 20) + 
+    guides(color="none",
+           shape="none",
+           size="none") +
+    geom_hline(yintercept=0,
+               linetype="dashed") +
+    ylab("log2(fold change)") +
+    xlab("Mean of normalized counts") 
+  
+  ggsave(filename=file.path(dir.out,"MA-plot.pdf"),p,
+         width=8,
+         height=5)
+    
   
   #Generate gene dispersion plot 
   pdf(file=file.path(dir.out,"dispersion-plot.pdf"))
