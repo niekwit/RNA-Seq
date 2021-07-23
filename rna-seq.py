@@ -114,7 +114,7 @@ if __name__ == "__main__":
     
     script_dir=os.path.abspath(os.path.dirname(__file__))
     sys.path.append(script_dir)#adds script directory to runtime (for importing modules)
-    import utils as utils
+    import utils
 
     #utils.install_packages()
     main(script_dir)

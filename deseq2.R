@@ -137,7 +137,7 @@ for (i in 1:length(df.list)){
     scale_x_continuous(trans='log10') +
     ylim(-5,5) + 
     scale_color_manual(values=c("black", "blue")) + 
-    theme_classic(base_size = 20) + 
+    theme_bw(base_size = 20) + 
     guides(color="none",
            shape="none",
            size="none") +
@@ -161,12 +161,12 @@ for (i in 1:length(df.list)){
   pcaData <- plotPCA(vsd, intgroup=c("condition", "sample"), returnData=TRUE)
   percentVar <- round(100* attr(pcaData, "percentVar"))
   p <- ggplot(pcaData, aes(PC1, PC2, color=condition,shape=sample)) +
-    theme_light() +
+    theme_bw(base_size = 20) +
     theme(legend.position = "right") +
-    geom_point(size=3) +
+    geom_point(size=5) +
     xlab(paste0("PC1: ",percentVar[1],"% variance")) +
     ylab(paste0("PC2: ",percentVar[2],"% variance")) +
-    coord_fixed()
+    coord_fixed(ratio=2.5)
   
   ggsave(paste0(dir.out,"/PCA-plot.pdf"),p)
   
