@@ -95,6 +95,7 @@ def main(script_dir):
         fasta=settings["FASTA"]["gencode-v35"]
         utils.salmon(salmon_index,str(threads),work_dir,gtf,fasta,script_dir,settings)
         utils.plotMappingRate(work_dir)
+        utils.plotPCA(work_dir,script_dir)
         utils.diff_expr(work_dir,gtf,script_dir,species,pvalue)
         utils.plotVolcano(work_dir)
     elif align.lower() == "hisat2":

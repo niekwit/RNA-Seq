@@ -1,6 +1,6 @@
-Sample,Condition,exp1,exp2,exp3
+Sample,Condition,Nx_vs_Hx,exp2,exp3
 Control-1,Control-Nx,control,NA,control
-Control-1,Control-Nx,control,NA,control
+Control-2,Control-Nx,control,NA,control
 Control-Hypoxia-1,Control-Hx,test,control,NA
 Control-Hypoxia-2,Control-Hx,test,control,NA
 HIF1B-Hypoxia-1,HIF1B-Hx,NA,test,test

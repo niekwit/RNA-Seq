@@ -14,7 +14,37 @@ import matplotlib.pyplot as plt
 import gseapy as gp
 from gseapy.plot import gseaplot
 import math
- 
+import hashlib
+
+def checkMd5(work_dir):
+    md5sum_file = os.path.join(work_dir,"raw-data", "md5sums.csv")     
+   
+    def md5(file):
+        work_dir = os.getcwd()
+        file = os.path.join(work_dir, "raw-data", file)
+        hash_md5 = hashlib.md5()
+        with open(file, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return(hash_md5.hexdigest())
+
+    if not os.path.exists(os.path.join(work_dir, ".md5summscorrect")):
+        if os.path.exists(md5sum_file):
+            print("Checking MD5 checksums")
+            df = pd.read_csv(os.path.join(work_dir,"raw-data","md5sums.csv"))
+            df["md5sum_new"] = df["file"].apply(md5)
+            
+            #compare original checksums with calculated ones
+            df["md5sumCorrect"] = df["md5sum"] == df["md5sum_new"]
+            
+            check_list = df[~df["md5sumCorrect"]]
+            if len(check_list) > 0:
+                print("Calculated MD5 checksums do not match originals:")
+                print(check_list["file"])
+                sys.exit(1)
+            else:
+                print("MD5 checksums correct")
+                open(".md5summscorrect", 'a').close() 
 
 def install_packages(): #check for required python packages; installs if absent
     required = {"pyyaml,cutadapt,multiqc"}
@@ -84,7 +114,7 @@ def trim(threads, work_dir):
         out_file1=os.path.join(out_dir,out_file1)
         if not file_exists(out_file1):
             read2=read1.replace("R1","R2")
-            trim_galore_command=["trim_galore","-j",threads,"-o","./trim", "--paired",read1,read2]
+            trim_galore_command=["trim_galore","-j",str(threads),"-o","./trim", "--paired",read1,read2]
             #log commands
             with open(work_dir+"/commands.log", "a") as file:
                 file.write("Trim Galore: ")
@@ -229,6 +259,21 @@ def plotVolcano(work_dir):
             plt.savefig(out_file)
             plt.close()
 
+
+def plotPCA(work_dir,script_dir):
+    out_file = os.path.join(work_dir,"salmon","PCAplot.pdf")
+    if not file_exists(out_file):
+        PCA_command = ["Rscript",os.path.join(script_dir, "pcaPlot.R"), work_dir]
+        with open(os.path.join(work_dir,"commands.log"), "a") as file:
+            file.write("PCA plot (all samples): ")
+            print(*PCA_command, sep=" ",file=file)
+    
+    try:
+        subprocess.run(PCA_command)
+    except:
+        print("PCA plot for all samples failed, check log")
+        return(None)
+    
 def hisat2():
     print("Mapping reads with HISAT2 (UNDER CONSTRUCTION)")
     sys.exit()
