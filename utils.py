@@ -44,7 +44,11 @@ def checkMd5(work_dir):
                 sys.exit(1)
             else:
                 print("MD5 checksums correct")
-                open(".md5summscorrect", 'a').close() 
+                open(".md5summscorrect", 'a').close()
+                df.to_csv(os.path.join(work_dir,"raw-data","md5sums-checked.tsv"), 
+                          index=False,
+                          header=True,
+                          sep="\t")
 
 def install_packages(): #check for required python packages; installs if absent
     required = {"pyyaml,cutadapt,multiqc"}
@@ -323,10 +327,11 @@ def geneSetEnrichment(work_dir,pvalue,gene_sets):
                             permutation_num=100,
                             format="pdf",
                             seed=6,
-                            no_plot=True)
+                            no_plot = True)
         terms=pre_res.res2d.index
         df_out=pre_res.res2d
-        df_out.reset_index(inplace=True)
+        df_out.reset_index(inplace = True)
+        
         df_out.to_csv(os.path.join(out_dir,"GSEA",'GSEA.csv'), 
                       index=False)
         
@@ -347,22 +352,22 @@ def geneSetEnrichment(work_dir,pvalue,gene_sets):
     logPvalue=-math.log10(pvalue)
     
     for file in file_list:
-       df=pd.read_csv(file)
-       df["log.p.value"]=-np.log10(df["padj"])
-       out_dir=os.path.dirname(file)
-              
-       df_up=df[(df["log2FoldChange"] > 0.5) & (df["log.p.value"] > logPvalue)]
-       upregulated_genes=list(df_up["SYMBOL"])
+       df = pd.read_csv(file)
+       df["log.p.value"] = -np.log10(df["padj"])
+       out_dir = os.path.dirname(file)
+       os.makedirs(os.path.join(out_dir,"GSEA"), exist_ok = True)       
+       df_up = df[(df["log2FoldChange"] > 0.5) & (df["log.p.value"] > logPvalue)]
+       upregulated_genes = list(df_up["SYMBOL"])
        
-       df_down=df[(df["log2FoldChange"] < -0.5) & (df["log.p.value"] > logPvalue)]
-       downregulated_genes=list(df_down["SYMBOL"])
+       df_down = df[(df["log2FoldChange"] < -0.5) & (df["log.p.value"] > logPvalue)]
+       downregulated_genes = list(df_down["SYMBOL"])
        
        input_list=[upregulated_genes,downregulated_genes]
        output_names=["upregulated_genes","downregulated_genes"]
        
        #run Enrichr
-       for x,y in zip(input_list,output_names):
-           doEnrichr(x,gene_sets,out_dir,y)
+       #for x,y in zip(input_list,output_names):
+       #    doEnrichr(x,gene_sets,out_dir,y)
            
        #Run GSEA
        for i in gene_sets:

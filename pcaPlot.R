@@ -14,8 +14,11 @@ library(ggplot2)
 library(stringr)
 library(data.table)
 
+#get parsed arguments
+args <- commandArgs(trailingOnly = TRUE)
+
 #get all Salmon quant files in experimental directory
-work.dir <- "/home/niek/Documents/analyses/RNA-Seq/test"
+work.dir <- args[1]
 file.list <- Sys.glob(file.path(work.dir,"salmon","*","quant.sf"))
 
 #get number of transcripts
@@ -39,7 +42,18 @@ pca_res <- prcomp(df.all.t)
 
 #create sample and condition names
 df.all.t$samples <- row.names(df.all.t)
-df.all.t$Condition <- gsub('.{2}$', '', x = df.all.t$samples) #removes -1/-2 from sample names (last two characters)
+df.all.t$Condition <- gsub('.{2}$', 
+                           '', 
+                           x = df.all.t$samples) #removes -1/-2 from sample names (last two characters)
+
+#check number of replicates for shapes plots
+sample.number <- length(df.all.t$samples)
+unique.samples <- length(unique(df.all.t$Condition))
+number.replicates <- sample.number / unique.samples
+
+shape.list <- c(15,16,17,18,4,3,8,11,10,13,21,22,23,24,25)
+
+shape.value.vector <- shape.list[1:number.replicates]
 
 #plot PCA
 p <- autoplot(pca_res, 
@@ -48,7 +62,7 @@ p <- autoplot(pca_res,
          shape = "samples",
          size = 6,
          ) +
-  theme_set(theme_bw()) +
+  theme_bw() +
   theme(axis.text.x = element_text(size = 14),
         axis.text.y = element_text(size = 14),
         axis.title.x = element_text(size = 14),
@@ -57,9 +71,9 @@ p <- autoplot(pca_res,
         legend.title = element_text(size=12)
         ) +
   scale_shape_manual(name = "Samples",
-                     values=c(rep(c(16, 17), 
+                     values = c(rep(shape.value.vector, 
                                   length(unique(df.all.t$Condition))))) +
-  coord_fixed(ratio=0.75)
+  coord_fixed(ratio = 0.75)
 
-ggsave(file.path(file = work.dir,"salmon","PCAplot.pdf"), 
+ggsave(file = file.path(work.dir,"salmon","PCAplot.pdf"), 
        plot = p)

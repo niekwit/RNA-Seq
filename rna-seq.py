@@ -73,8 +73,10 @@ def main(script_dir):
     if threads == "max":
         threads=max_threads
 
+    ### Check md5sums
+    utils.checkMd5(work_dir)
+
     ###Run FastQC/MultiQC
-    
     file_extension=utils.getExtension(work_dir)
     skip_fastqc=args["skip_fastqc"]
     if not skip_fastqc:
